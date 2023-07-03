@@ -1,7 +1,9 @@
 # jax_chmc
 An implementation of a family of MCMC methods on implicitly defined manifolds
 
-This follows the matlab implementation from https://www.cs.toronto.edu/~mbrubake/projects/cmcmc/
+
+The api is similar to the one from [blackjax](https://github.com/blackjax-devs/blackjax) but is slightly simplified, and closer to the original MATLAB [implementation](https://www.cs.toronto.edu/~mbrubake/projects/cmcmc/) by @mbrubake .
+
 
 #### Project Status
 
