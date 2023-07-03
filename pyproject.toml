@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "jax_chmc"
+version = "0.0.1"
+description = "An implementation of a family of MCMC methods on implicitly defined manifolds"
+authors = ["Krzysztof Rusek <krusek@agh.edu.pl>"]
+readme = "README.md"
+license = "Apache 2.0"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+jax = "^0.4.6"
+tensorflow-probability = "^0.19.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
