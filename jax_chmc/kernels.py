@@ -86,12 +86,7 @@ def fun_chmc(
 
     def generare_momentum(state: CHMCState, proposal_key):
         z = jax.random.normal(proposal_key, shape=state.position.shape)
-
-        # l77
-        q0 = state.position
-        # q0 = vq
         p0 = mass.cholesky @ z
-
         # projection
         dc = state.constrain_jac
         D = dc @ mass.inverse
