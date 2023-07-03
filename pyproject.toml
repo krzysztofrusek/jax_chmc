@@ -8,8 +8,20 @@ license = "Apache 2.0"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-jax = "^0.4.6"
+jax = "^0.4.13"
+jaxlib = "^0.4.13"
 tensorflow-probability = "^0.19.0"
+blackjax = "^0.9.6"
+chex = "^0.1.81"
+
+
+[tool.poetry.dev-dependencies]
+seaborn = "^0.12.2"
+
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^6.0.0"
+mypy = "^1.4.1"
 
 [build-system]
 requires = ["poetry-core"]
