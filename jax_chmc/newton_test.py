@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 from jax.tree_util import tree_map
 
-from jax_chmc.newton import newton_solve
+from jax_chmc.newton import newton_solve, newton_solver
 
 
 class NewtonTestCase(unittest.TestCase):
@@ -74,7 +74,20 @@ class NewtonTestCase(unittest.TestCase):
         for l in jax.tree_util.tree_leaves(ff(sol.x,None) ):
             self.assertAlmostEqual(l,0,places=4)
 
+    def test_newton_custom(self):
+        class X(NamedTuple):
+            a: Float
+            b: Float
+        def ff(x: X):
+            return dict(a=(x.a ** 2 - x.b + 1.),
+                        b=(2 * x.a - x.b ** 2 + 1.))
 
+        x0 = X(a=jnp.asarray([1.]), b=jnp.asarray([4.]))
+        sol = newton_solver(ff, x0, max_iter=20)
+        self.assertTrue(isinstance(sol.x,X))
+
+        for l in jax.tree_util.tree_leaves(ff(sol.x) ):
+            self.assertAlmostEqual(l,0,places=4)
 
 # add assertion here
 

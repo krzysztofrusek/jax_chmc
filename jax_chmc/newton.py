@@ -35,7 +35,7 @@ def newton_solve(fun: Callable, x0: Array, max_iter: int, min_norm: Float = 1e-5
     def step_fun(x: NewtonState) -> NewtonState:
         Jop = lx.JacobianLinearOperator(fun, x.x)
         F = fun(x.x, None)
-        sol = lx.linear_solve(Jop, (-ω(F)).ω)
+        sol = lx.linear_solve(Jop, (-ω(F)).ω, solver=lx.QR())
         delta = sol.value
         return NewtonState(x=(ω(x.x) + ω(delta)).ω,
                            delta=delta,
@@ -109,7 +109,7 @@ def newton_solver(fun: Callable, x0: PyTree,
                                          aux=aux
                                          )
                              )
-    return sol.replace(x=unravel_fn(sol.x), delta=unravel_fn(sol.delta))
+    return sol._replace(x=unravel_fn(sol.x), delta=unravel_fn(sol.delta))
 
 
 def vector_newton_solver(fun: Callable, x0: Array, max_iter: int, min_norm: Float = 1e-5) -> NewtonState:
