@@ -1,18 +1,11 @@
-from typing import Callable, Tuple, NamedTuple, Any
+from typing import Callable, NamedTuple, Any
 
 import jax
 import jax.numpy as jnp
-#from blackjax.base import SamplingAlgorithm
-#from blackjax.mcmc import integrators
-#from blackjax.types import PRNGKey
-#from chex import Scalar
-#from jax import Array
 from jax.scipy.linalg import solve_triangular, cholesky
 from jaxtyping import PyTree, Array, Float, PRNGKeyArray
 
 from jax_chmc.newton import newton_solver, newton_solve
-
-
 
 
 class CHMCState(NamedTuple):
@@ -126,7 +119,7 @@ def fun_chmc(
         dH_dp = jax.grad(make_hamiltonian(sim_logdensity_fn), argnums=0)
 
         # TODO split into kinetic and potential energy
-        def eq(x: RattleVars,_):
+        def eq(x: RattleVars):
             C_q_1 = j_con_fun(x.q_1)
             zero = (
                 p0 - step_size * 0.5 * ((dc.T @ x.lam) + dH_dq(x.p_1_2, q0)) - x.p_1_2,
@@ -144,8 +137,8 @@ def fun_chmc(
                                mu=jnp.ones(dc.shape[0])
                                )
 
-        #sol = newton_solver(eq, init_vars, 8)
-        sol = newton_solve(eq, init_vars, 8)
+        sol = newton_solver(eq, init_vars, 8)
+        #sol = newton_solve(lambda x,_: eq(x), init_vars, 8)
         return PQ(p=sol.x.p_1, q=sol.x.q_1)
 
     def kernel(

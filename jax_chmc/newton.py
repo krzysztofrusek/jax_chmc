@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Callable, NamedTuple
 
 import jax
@@ -21,7 +22,7 @@ def tree_norm(t: PyTree) -> Float:
     leaves = jtu.tree_leaves(norms)
     return sum(leaves)
 
-
+@partial(jax.jit, static_argnums=(0))
 def newton_solve(fun: Callable, x0: Array, max_iter: int, min_norm: Float = 1e-5) -> NewtonState:
     """
     Solve nonlinear equation :math:`fun(x,_)=0` by iterative Newton method starting from :math:`x0`
@@ -35,7 +36,7 @@ def newton_solve(fun: Callable, x0: Array, max_iter: int, min_norm: Float = 1e-5
     def step_fun(x: NewtonState) -> NewtonState:
         Jop = lx.JacobianLinearOperator(fun, x.x)
         F = fun(x.x, None)
-        sol = lx.linear_solve(Jop, (-ω(F)).ω, solver=lx.QR())
+        sol = lx.linear_solve(Jop, (-ω(F)).ω)
         delta = sol.value
         return NewtonState(x=(ω(x.x) + ω(delta)).ω,
                            delta=delta,
@@ -49,7 +50,7 @@ def newton_solve(fun: Callable, x0: Array, max_iter: int, min_norm: Float = 1e-5
     sol = jax.lax.while_loop(cond, step_fun, NewtonState(x=x0, delta=x0, n=jnp.zeros((), dtype=jnp.int32)))
     return sol
 
-
+@partial(jax.jit, static_argnums=(0))
 def newton_solver(fun: Callable, x0: PyTree,
                   max_iter: int,
                   min_norm: Float = 1e-5,
