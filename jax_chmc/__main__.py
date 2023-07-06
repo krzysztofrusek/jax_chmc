@@ -38,6 +38,7 @@ def app():
 def benchmark(few_large=True):
     """
     Apple M1 Pro  Sample mcmc: 0.14694534553905214 s ± 0.004017746250481866 s
+        Lineax    Sample mcmc: 0.15854501789837627 s ± 0.0014483560794849987 s
 
     """
     cm = make_chain()

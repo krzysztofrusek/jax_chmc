@@ -1,17 +1,18 @@
-from typing import Callable, Tuple, NamedTuple
+from typing import Callable, Tuple, NamedTuple, Any
 
 import jax
 import jax.numpy as jnp
-from blackjax.base import SamplingAlgorithm
-from blackjax.mcmc import integrators
-from blackjax.types import PRNGKey
-from chex import Scalar
-from jax import Array
+#from blackjax.base import SamplingAlgorithm
+#from blackjax.mcmc import integrators
+#from blackjax.types import PRNGKey
+#from chex import Scalar
+#from jax import Array
 from jax.scipy.linalg import solve_triangular, cholesky
+from jaxtyping import PyTree, Array, Float, PRNGKeyArray
 
-from jax_chmc.newton import newton_solver
+from jax_chmc.newton import newton_solver, newton_solve
 
-ArrayTree = Array
+
 
 
 class CHMCState(NamedTuple):
@@ -23,7 +24,7 @@ class CHMCState(NamedTuple):
     constraint jacobian.
 
     """
-    position: ArrayTree
+    position: PyTree
     # hamiltonian:float
     # logdensity: float
     # logdensity_grad: ArrayTree
@@ -31,12 +32,12 @@ class CHMCState(NamedTuple):
 
 
 class CHMCInfo(NamedTuple):
-    momentum: ArrayTree
+    momentum: PyTree
     acceptance_rate: float
     is_accepted: bool
     is_divergent: bool
     energy: float
-    proposal: integrators.IntegratorState
+    proposal: Any
     num_integration_steps: int
 
 
@@ -49,7 +50,7 @@ class Mass:
         self.inverse = solve_triangular(self.cholesky.T, solve_triangular(self.cholesky, jnp.eye(*M.shape), lower=True),
                                         lower=False)
 
-    def compute_log_norm_const(self, dc: Array) -> Scalar:
+    def compute_log_norm_const(self, dc: Array) -> Float:
         # https://math.stackexchange.com/questions/3155163/computing-the-pdf-of-a-low-rank-multivariate-normal
 
         D = dc @ self.inverse
@@ -73,6 +74,11 @@ class PQ(NamedTuple):
     # dc: Array
 
 
+class SamplingAlgorithm(NamedTuple):
+    init: Callable
+    step: Callable
+
+
 def fun_chmc(
         logdensity_fn: Callable,  # H
         sim_logdensity_fn: Callable,  # hat H
@@ -94,7 +100,7 @@ def fun_chmc(
 
         return p0
 
-    def init(position: ArrayTree) -> CHMCState:
+    def init(position: PyTree) -> CHMCState:
         f, df = jax.value_and_grad(logdensity_fn)(position)
         jac = j_con_fun(position)
 
@@ -120,7 +126,7 @@ def fun_chmc(
         dH_dp = jax.grad(make_hamiltonian(sim_logdensity_fn), argnums=0)
 
         # TODO split into kinetic and potential energy
-        def eq(x: RattleVars):
+        def eq(x: RattleVars,_):
             C_q_1 = j_con_fun(x.q_1)
             zero = (
                 p0 - step_size * 0.5 * ((dc.T @ x.lam) + dH_dq(x.p_1_2, q0)) - x.p_1_2,
@@ -138,11 +144,12 @@ def fun_chmc(
                                mu=jnp.ones(dc.shape[0])
                                )
 
-        sol = newton_solver(eq, init_vars, 8)
+        #sol = newton_solver(eq, init_vars, 8)
+        sol = newton_solve(eq, init_vars, 8)
         return PQ(p=sol.x.p_1, q=sol.x.q_1)
 
     def kernel(
-            rng_key: PRNGKey,
+            rng_key: PRNGKeyArray,
             state: CHMCState,
     ) -> tuple[CHMCState, CHMCInfo]:
         proposal_key, accept_key = jax.random.split(rng_key)
