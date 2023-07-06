@@ -1,19 +1,30 @@
+import timeit
+
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
 
 from jax_chmc.kernels import fun_chmc
 
-if __name__ == '__main__':
+
+def make_chain():
     M = 3.0 * jnp.diag(jnp.ones(4))
-    k = jax.random.PRNGKey(42)
     cm = fun_chmc(logdensity_fn=lambda q: -jnp.square(q).sum(),
                   sim_logdensity_fn=lambda q: -jnp.square(q).sum(),
                   con_fn=lambda q: q.sum(keepdims=True),
                   inverse_mass_matrix=M,
                   num_integration_steps=3,
                   step_size=0.3)
+    return cm
+
+
+def app():
+    cm = make_chain()
+
+    k = jax.random.PRNGKey(42)
+
     s0 = cm.init(jnp.zeros(4))
     s1, _ = cm.step(k, s0)
 
@@ -22,3 +33,46 @@ if __name__ == '__main__':
 
     sns.kdeplot(qs[5000:, :])
     plt.show()
+
+
+def benchmark(few_large=True):
+    """
+    Apple M1 Pro  Sample mcmc: 0.14694534553905214 s ± 0.004017746250481866 s
+
+    """
+    cm = make_chain()
+    k = jax.random.PRNGKey(42)
+
+    s0 = cm.init(jnp.zeros(4))
+    s1, _ = cm.step(k, s0)
+
+    if few_large:
+        n_step = 256
+        n = 4
+    else:
+        n_step = 2
+        n = 4 * 128
+    r = 16
+
+    ks = jax.random.split(k, n_step)
+
+    def sample():
+        _, qs = jax.lax.scan(lambda s, k: (cm.step(k, s)[0], s.position), s1, ks)
+        qs.block_until_ready()
+
+    s = s0
+
+    def _sample_py():
+        s = s0
+        for k in ks:
+            s, q = cm.step(k, s)
+            jax.block_until_ready(q)
+
+    sample()
+    t = timeit.repeat(sample, repeat=r, number=n, globals=dict(s=s))
+    print(jax.devices())
+    print(f'Sample mcmc: {np.mean(t) / r} s ± {2 * np.std(t) / np.sqrt(n * r)} s')
+
+
+if __name__ == '__main__':
+    benchmark()
