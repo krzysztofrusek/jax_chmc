@@ -9,8 +9,8 @@ import seaborn as sns
 from jax_chmc.kernels import fun_chmc
 
 
-def make_chain():
-    M = 3.0 * jnp.diag(jnp.ones(4))
+def make_chain(n=4):
+    M = 3.0 * jnp.diag(jnp.ones(n))
     cm = fun_chmc(logdensity_fn=lambda q: -jnp.square(q).sum(),
                   sim_logdensity_fn=lambda q: -jnp.square(q).sum(),
                   con_fn=lambda q: q.sum(keepdims=True),
@@ -38,12 +38,16 @@ def app():
 def benchmark(few_large=True):
     """
     Apple M1 Pro  Sample mcmc: 0.14694534553905214 s ± 0.004017746250481866 s
+        Lineax    Sample mcmc: 0.15854501789837627 s ± 0.0014483560794849987 s
+        R**40     Sample mcmc: 0.20070723095312815 s ± 0.010753018901673742 s
+        Li R**40  Sample mcmc: 0.2309575584294521 s ± 0.006085973709004624 s
 
     """
-    cm = make_chain()
+    n=40
+    cm = make_chain(n)
     k = jax.random.PRNGKey(42)
 
-    s0 = cm.init(jnp.zeros(4))
+    s0 = cm.init(jnp.zeros(n))
     s1, _ = cm.step(k, s0)
 
     if few_large:
@@ -55,6 +59,7 @@ def benchmark(few_large=True):
     r = 16
 
     ks = jax.random.split(k, n_step)
+
 
     def sample():
         _, qs = jax.lax.scan(lambda s, k: (cm.step(k, s)[0], s.position), s1, ks)
