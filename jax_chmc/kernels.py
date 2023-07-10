@@ -103,10 +103,13 @@ def fun_chmc(
                          constrain_jac=jac
                          )
 
-    def make_hamiltonian(logdensity_fn: Callable):
+    def make_hamiltonian(logdensity_fn: Callable,sim=False):
         def hamiltonian(p: Array, q: Array):
             dc = j_con_fun(q)
-            return 0.5 * p.T @ mass.inverse @ p + mass.compute_log_norm_const(dc) - logdensity_fn(q)
+            if sim:
+                return 0.5 * p.T @ mass.inverse @ p - logdensity_fn(q)
+            else:
+                return 0.5 * p.T @ mass.inverse @ p + mass.compute_log_norm_const(dc) - logdensity_fn(q)
 
         return hamiltonian
 
@@ -115,8 +118,8 @@ def fun_chmc(
         dc = j_con_fun(s.q)
         p0, q0 = s
 
-        dH_dq = jax.grad(make_hamiltonian(sim_logdensity_fn), argnums=1)
-        dH_dp = jax.grad(make_hamiltonian(sim_logdensity_fn), argnums=0)
+        dH_dq = jax.grad(make_hamiltonian(sim_logdensity_fn, sim=True), argnums=1)
+        dH_dp = jax.grad(make_hamiltonian(sim_logdensity_fn, sim=True), argnums=0)
 
         # TODO split into kinetic and potential energy
         def eq(x: RattleVars):
@@ -149,7 +152,7 @@ def fun_chmc(
 
         p0 = generare_momentum(state, proposal_key)
 
-        target_H = make_hamiltonian(logdensity_fn)
+        target_H = make_hamiltonian(logdensity_fn, sim=False)
 
         pq0 = PQ(p0, state.position)
         pqL, _ = jax.lax.scan(lambda x, _: (rattle_integrator(x), None), pq0, xs=None, length=num_integration_steps)
