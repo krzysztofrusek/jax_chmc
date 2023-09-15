@@ -50,13 +50,13 @@ def newton_solve(fun: Callable, x0: Array, max_iter: int, min_norm: Float = 1e-5
     sol = jax.lax.while_loop(cond, step_fun, NewtonState(x=x0, delta=x0, n=jnp.zeros((), dtype=jnp.int32)))
     return sol
 
-@partial(jax.jit, static_argnums=(0))
+
 def newton_solver(fun: Callable, x0: PyTree,
                   max_iter: int,
                   min_norm: Float = 1e-5,
                   has_aux=False) -> NewtonState:
     """
-    Solve nonlinear equation :math:`fun(x)=0` by iterative Newton method starting from :math:`x0`
+    Solve nonlinear equation :math:`fun(x)=0` by iterative Newton method starting from :math:`x0` with aux return.
     :param max_iter: Maximum number of iteration
     :param min_norm: Minimal norm of the update
     :param fun: A function

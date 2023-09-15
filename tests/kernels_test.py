@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import jax.random
 import numpy as np
 
-import mvn
+from jax_chmc import mvn
 from jax_chmc.kernels import Mass
 from jax_chmc.kernels import fun_chmc
 
