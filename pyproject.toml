@@ -34,6 +34,8 @@ path = "jax_chmc/__init__.py"
 
 [tool.hatch.envs.default]
 dependencies=["pytest","jaxlib>=0.4.13","seaborn"]
+path='./venv'
 
 [tool.hatch.envs.default.scripts]
 test = "pytest {args:tests}"
+getref = "curl -O https://www.cs.toronto.edu/~mbrubake/projects/CHMC.tar.gz"
