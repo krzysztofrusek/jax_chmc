@@ -5,7 +5,12 @@ import jax.numpy as jnp
 from jax.scipy.linalg import solve_triangular, cholesky
 from jaxtyping import PyTree, Array, Float, PRNGKeyArray
 
-from jax_chmc.newton import newton_solver, newton_solve
+from jax_chmc.rattle import Rattle
+from diffrax import NewtonNonlinearSolver
+import jax.tree_util as jtu
+from diffrax import ODETerm, SaveAt
+from equinox.internal import ω
+import diffrax
 
 
 class CHMCState(NamedTuple):
@@ -53,19 +58,6 @@ class Mass:
         return jnp.sum(jnp.log(top_d))
 
 
-class RattleVars(NamedTuple):
-    p_1_2: Array  # Midpoint momentum
-    q_1: Array  # Midpoint position
-    p_1: Array  # final momentum
-    lam: Array  # Midpoint Lagrange multiplier (state)
-    mu: Array  # final Lagrange multiplier (momentum)
-
-
-class PQ(NamedTuple):
-    p: Array
-    q: Array
-    # dc: Array
-
 
 class SamplingAlgorithm(NamedTuple):
     init: Callable
@@ -103,7 +95,7 @@ def fun_chmc(
                          constrain_jac=jac
                          )
 
-    def make_hamiltonian(logdensity_fn: Callable,sim=False):
+    def make_hamiltonian(logdensity_fn: Callable, sim=False):
         def hamiltonian(p: Array, q: Array):
             dc = j_con_fun(q)
             if sim:
@@ -113,36 +105,6 @@ def fun_chmc(
 
         return hamiltonian
 
-    def rattle_integrator(s: PQ) -> PQ:
-        """RATTLE integrator"""
-        dc = j_con_fun(s.q)
-        p0, q0 = s
-
-        dH_dq = jax.grad(make_hamiltonian(sim_logdensity_fn, sim=True), argnums=1)
-        dH_dp = jax.grad(make_hamiltonian(sim_logdensity_fn, sim=True), argnums=0)
-
-        # TODO split into kinetic and potential energy
-        def eq(x: RattleVars):
-            C_q_1 = j_con_fun(x.q_1)
-            zero = (
-                p0 - step_size * 0.5 * ((dc.T @ x.lam) + dH_dq(x.p_1_2, q0)) - x.p_1_2,
-                q0 - step_size * 0.5 * (dH_dp(x.p_1_2, q0) + dH_dp(x.p_1_2, x.q_1)) - x.q_1,
-                con_fn(x.q_1),
-                x.p_1_2 - step_size * 0.5 * (dH_dq(x.p_1_2, x.q_1) + (C_q_1.T @ x.mu)) - x.p_1,
-                C_q_1 @ dH_dp(x.p_1, x.q_1)
-            )
-            return zero
-
-        init_vars = RattleVars(p_1_2=p0,
-                               q_1=q0 + mass.inverse @ p0,
-                               p_1=p0,
-                               lam=jnp.ones(dc.shape[0]),
-                               mu=jnp.ones(dc.shape[0])
-                               )
-
-        sol = newton_solver(eq, init_vars, 8)
-        #sol = newton_solve(lambda x,_: eq(x), init_vars, 8)
-        return PQ(p=sol.x.p_1, q=sol.x.q_1)
 
     def kernel(
             rng_key: PRNGKeyArray,
@@ -154,8 +116,17 @@ def fun_chmc(
 
         target_H = make_hamiltonian(logdensity_fn, sim=False)
 
-        pq0 = PQ(p0, state.position)
-        pqL, _ = jax.lax.scan(lambda x, _: (rattle_integrator(x), None), pq0, xs=None, length=num_integration_steps)
+        pq0 = (p0, state.position)
+
+        rat = Rattle(nonlinear_solver=NewtonNonlinearSolver(rtol=1e-4, atol=1e-6), constrain=con_fn)
+        H = make_hamiltonian(sim_logdensity_fn, sim=True)
+        terms = (ODETerm(lambda t, q, args: (-jax.grad(H, argnums=1)(jtu.tree_map(jnp.zeros_like, q), q) ** ω).ω),
+                 ODETerm(lambda t, p, args: jax.grad(H, argnums=0)(p, jtu.tree_map(jnp.zeros_like, p))))
+        saveat = SaveAt(t1=True)
+        dt = 0.1
+        t1 = num_integration_steps * dt
+        solution = diffrax.diffeqsolve(terms, rat, 0.0, t1, dt0=dt, y0=pq0, saveat=saveat)
+        pqL = (solution.ys[0][0], solution.ys[1][0])
 
         H0 = target_H(*pq0)
         H = target_H(*pqL)
@@ -163,11 +134,11 @@ def fun_chmc(
         accept = jax.random.bernoulli(accept_key, accept_p)
 
         info = CHMCInfo(acceptance_rate=accept_p, is_accepted=accept,
-                        proposal=pqL, momentum=pqL.p, is_divergent=None, energy=H,
+                        proposal=pqL, momentum=pqL[0], is_divergent=None, energy=H,
                         num_integration_steps=num_integration_steps)
 
         # TODO improve performance
-        new_state = jax.lax.cond(info.is_accepted, lambda: init(pqL.q), lambda: state)
+        new_state = jax.lax.cond(info.is_accepted, lambda: init(pqL[1]), lambda: state)
 
         return new_state, info
 

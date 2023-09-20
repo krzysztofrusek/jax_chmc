@@ -5,8 +5,8 @@ import jax.random
 import numpy as np
 
 from jax_chmc import mvn
-from jax_chmc.kernels import Mass
-from jax_chmc.kernels import fun_chmc
+from jax_chmc import Mass
+from jax_chmc import fun_chmc
 
 
 class FunCHMCCase(unittest.TestCase):
