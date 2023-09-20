@@ -1,3 +1,4 @@
-__version__="0.0.3"
+__version__="0.0.4"
 
-import jax_chmc.newton
+from jax_chmc.kernels import fun_chmc
+from jax_chmc.kernels import Mass

@@ -14,27 +14,8 @@ from diffrax.custom_types import Bool, DenseInfo, PyTree, Scalar,Array
 import jax.tree_util as jtu
 from equinox.internal import ω
 
-class MyTestCase(unittest.TestCase):
-    def test_something(self):
-        def constrain(q):
-            return jnp.sum(q, keepdims=True)
-        rat = Rattle(constrain=constrain)
-        def H(p,q):
-            return p@p.T/4. + q@q.T
+class RattleTestCase(unittest.TestCase):
 
-
-        # V = p^2/2m m=1, v=1
-
-
-        terms = (ODETerm(lambda t, q, args: -jax.grad(H,argnums=1)(jnp.zeros_like(q), q) ),
-                 ODETerm(lambda t, p, args: jax.grad(H, argnums=0)(p,jnp.zeros_like(p)))
-                 )
-        y0=(jnp.zeros((1)),jnp.ones((1)))
-        state0 = rat.init(terms, 0.0, 0.01,y0,None)
-        state1 = rat.step(terms, 0.0, 0.01,y0,None,state0,False)
-
-
-        self.assertEqual(True, True)  # add assertion here
 
     def test_circle(self):
         def constrain(q):
@@ -93,15 +74,6 @@ class MyTestCase(unittest.TestCase):
         solution = diffrax.diffeqsolve(terms,rat,0.0,t1,dt0=dt,y0=y0,saveat=saveat)
         p1,q1 = solution.ys
 
-
-        t = jnp.linspace(0.0,t1,100)
-        ps,qs = jax.vmap(solution.evaluate)(t)
-        import matplotlib.pyplot as plt
-        plt.plot(qs[:,0],qs[:,1])
-        plt.plot(t, jax.vmap(jnp.linalg.norm)(ps))
-        plt.gca().set_aspect('equal')
-        plt.show()
-
     def test_circle_tree(self):
 
         class Q(NamedTuple):
@@ -140,32 +112,8 @@ class MyTestCase(unittest.TestCase):
 
         t = jnp.linspace(0.0,t1,100)
         ps,qs = jax.vmap(solution.evaluate)(t)
-        import matplotlib.pyplot as plt
-        plt.plot(qs.x,qs.y)
-        #plt.plot(t, jax.vmap(jnp.linalg.norm)(ps))
-        plt.gca().set_aspect('equal')
-        plt.show()
 
 
-
-    def test_jacobians(self):
-
-        def f(x):
-            return jnp.sum(x, keepdims=True)
-
-        Jf = jax.jacobian(f)
-        x = jnp.asarray([1,2.])
-        v=jnp.asarray([3.])
-        J = Jf(x)
-
-
-        y, vjp_fun = jax.vjp(f,x)
-        jnp.allclose(v@J, vjp_fun(v)[0])
-
-        v2= jnp.asarray([3., 4.])
-
-        (primals_out, tangents_out) = jax.jvp(f,(x,), (v2,))
-        jnp.allclose(tangents_out,J@v2)
 
 if __name__ == '__main__':
     unittest.main()
