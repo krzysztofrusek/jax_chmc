@@ -123,9 +123,8 @@ def fun_chmc(
         terms = (ODETerm(lambda t, q, args: (-jax.grad(H, argnums=1)(jtu.tree_map(jnp.zeros_like, q), q) ** ω).ω),
                  ODETerm(lambda t, p, args: jax.grad(H, argnums=0)(p, jtu.tree_map(jnp.zeros_like, p))))
         saveat = SaveAt(t1=True)
-        dt = 0.1
-        t1 = num_integration_steps * dt
-        solution = diffrax.diffeqsolve(terms, rat, 0.0, t1, dt0=dt, y0=pq0, saveat=saveat)
+        t1 = num_integration_steps * step_size
+        solution = diffrax.diffeqsolve(terms, rat, 0.0, t1, dt0=step_size, y0=pq0, saveat=saveat)
         pqL = (solution.ys[0][0], solution.ys[1][0])
 
         H0 = target_H(*pq0)
