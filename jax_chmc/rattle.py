@@ -66,8 +66,8 @@ class Rattle(AbstractImplicitSolver):
         control2_half_1 = term_2.contr(t0, midpoint)
         control2_half_2 = term_2.contr(midpoint, t1)
 
-        p0 = y0_1
-        q0 = y0_2
+        # p0 = y0_1
+        # q0 = y0_2
 
         p0, q0 = y0
 
@@ -89,8 +89,8 @@ class Rattle(AbstractImplicitSolver):
         cs = jax.eval_shape(self.constrain, q0)
 
         init_vars = RattleVars(p_1_2=p0, q_1=(q0 ** ω * 2).ω, p_1=p0,
-                               lam=jtu.tree_map(lambda cs: jnp.zeros(cs.shape, cs.dtype), cs),
-                               mu=jtu.tree_map(lambda cs: jnp.zeros(cs.shape, cs.dtype), cs))
+                               lam=jtu.tree_map(jnp.zeros_like, cs),
+                               mu=jtu.tree_map(jnp.zeros_like, cs))
 
         sol = self.nonlinear_solver(eq, init_vars, None)
 
