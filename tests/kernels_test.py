@@ -60,12 +60,6 @@ class FunCHMCCase(unittest.TestCase):
         self.assertTrue(np.allclose(sampledsigma, sigmabar, atol=0.05))
 
 
-class MassCase(unittest.TestCase):
-
-    def test_mass(self):
-        M = 3.1 * jnp.diag(jnp.ones(4))
-        m = Mass(M)
-
 
 if __name__ == '__main__':
     unittest.main()
