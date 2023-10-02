@@ -1,16 +1,16 @@
 from typing import Callable, NamedTuple, Any
 
+import diffrax
 import jax
 import jax.numpy as jnp
+import jax.tree_util as jtu
+from diffrax import NewtonNonlinearSolver
+from diffrax import ODETerm, SaveAt
+from equinox.internal import ω
 from jax.scipy.linalg import solve_triangular, cholesky
 from jaxtyping import PyTree, Array, Float, PRNGKeyArray
 
 from jax_chmc.rattle import Rattle
-from diffrax import NewtonNonlinearSolver
-import jax.tree_util as jtu
-from diffrax import ODETerm, SaveAt
-from equinox.internal import ω
-import diffrax
 
 
 class CHMCState(NamedTuple):
@@ -44,7 +44,10 @@ class Mass:
     inverse: Array
 
     def __init__(self, M: Array):
-        self.cholesky = cholesky(M)
+        """
+        :param M: Mass matrix (covariance of the momentum distribution and  inverse of the position noise covariance.
+        """
+        self.cholesky = cholesky(M, True)
         self.inverse = solve_triangular(self.cholesky.T, solve_triangular(self.cholesky, jnp.eye(*M.shape), lower=True),
                                         lower=False)
 
@@ -56,7 +59,6 @@ class Mass:
         d = jnp.linalg.svd(cholMhat, compute_uv=False, hermitian=True)
         top_d, _ = jax.lax.top_k(d, dc.shape[1] - dc.shape[0])
         return jnp.sum(jnp.log(top_d))
-
 
 
 class SamplingAlgorithm(NamedTuple):
@@ -104,7 +106,6 @@ def fun_chmc(
                 return 0.5 * p.T @ mass.inverse @ p + mass.compute_log_norm_const(dc) - logdensity_fn(q)
 
         return hamiltonian
-
 
     def kernel(
             rng_key: PRNGKeyArray,
