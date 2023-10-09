@@ -36,7 +36,7 @@ $ hatch shell
 
 ### Running tests
 
-Gsd uses [Pytest](https://pytest.org/) for testing. To run the tests, use the following command:
+jax_chmc uses [Pytest](https://pytest.org/) for testing. To run the tests, use the following command:
 
 ```
 $ hatch run test 
