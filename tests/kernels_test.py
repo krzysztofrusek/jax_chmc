@@ -18,7 +18,7 @@ class FunCHMCCase(unittest.TestCase):
                      sim_logdensity_fn=logdens,
                      con_fn=condfun,
                      step_size=0.1,
-                     inverse_mass_matrix=M,
+                     mass_matrix=M,
                      num_integration_steps=2
                      )
 
@@ -35,7 +35,7 @@ class FunCHMCCase(unittest.TestCase):
                                     sim_logdensity_fn=lambda q: -jnp.square(q).sum(),
                                     con_fn=lambda q: q[:2].sum(keepdims=True),
                                     step_size=0.1,
-                                    inverse_mass_matrix=M,
+                                    mass_matrix=M,
                                     num_integration_steps=2
                                     )
 

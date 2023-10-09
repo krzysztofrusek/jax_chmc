@@ -71,10 +71,11 @@ def fun_chmc(
         sim_logdensity_fn: Callable,  # hat H
         con_fn: Callable,
         step_size,  # h
-        inverse_mass_matrix,  # M
+        mass_matrix,  # M
         num_integration_steps,  # L
+        solver_kwargs=dict(rtol=1e-4, atol=1e-6)
 ) -> SamplingAlgorithm:
-    mass = Mass(inverse_mass_matrix)
+    mass = Mass(mass_matrix)
     j_con_fun = jax.jacobian(con_fn)
 
     def generare_momentum(state: CHMCState, proposal_key):
@@ -119,7 +120,7 @@ def fun_chmc(
 
         pq0 = (p0, state.position)
 
-        rat = Rattle(nonlinear_solver=NewtonNonlinearSolver(rtol=1e-4, atol=1e-6), constrain=con_fn)
+        rat = Rattle(nonlinear_solver=NewtonNonlinearSolver(**solver_kwargs), constrain=con_fn)
         H = make_hamiltonian(sim_logdensity_fn, sim=True)
         terms = (ODETerm(lambda t, q, args: (-jax.grad(H, argnums=1)(jtu.tree_map(jnp.zeros_like, q), q) ** ω).ω),
                  ODETerm(lambda t, p, args: jax.grad(H, argnums=0)(p, jtu.tree_map(jnp.zeros_like, p))))

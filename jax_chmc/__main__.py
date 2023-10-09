@@ -14,7 +14,7 @@ def make_chain(n=4):
     cm = fun_chmc(logdensity_fn=lambda q: -jnp.square(q).sum(),
                   sim_logdensity_fn=lambda q: -jnp.square(q).sum(),
                   con_fn=lambda q: q.sum(keepdims=True),
-                  inverse_mass_matrix=M,
+                  mass_matrix=M,
                   num_integration_steps=3,
                   step_size=0.3)
     return cm
