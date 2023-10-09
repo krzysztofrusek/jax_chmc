@@ -1,6 +1,7 @@
 import jax.numpy as jnp
 import numpy as np
-
+from jaxtyping import Array
+import jax
 
 def conditional_mvn(loc, cov, a):
     """
@@ -24,6 +25,29 @@ def conditional_mvn(loc, cov, a):
     return mubar, sigmabar
 
 
+@jax.jit
+def static_conditional_mvn(loc:Array, cov:Array, a:Array)->tuple[Array,Array]:
+    """
+    Calculates parameter of MVN conditioned on event that the last dimentions are equal to a
+    :param loc:
+    :param cov:
+    :param a:
+    """
+    q = a.shape[0]
+    mu1 = loc[:-q]
+    mu2=loc[-q:]
+
+    sigma11 = cov[:-q,:-q]
+    sigma22 = cov[-q:, -q:]
+    sigma21 = cov[-q:, :-q]
+    sigma12 = cov[:-q, -q:]
+
+    mubar = mu1 - sigma12 @ jnp.linalg.solve(sigma22, a - mu2)
+    sigmabar = sigma11 - sigma12 @ jnp.linalg.solve(sigma22, sigma21)
+    return mubar, sigmabar
+
+
+
 def constrained_mvn(loc, cov, A):
     """Compute loc and covariance os a mvn distribution constrained to  :math:`A@x=0`
     First we make a joint distribution od :math:`x` and the constraints.
@@ -42,3 +66,20 @@ def constrained_mvn(loc, cov, A):
     a[-1] = 0
     mubar, sigmabar = conditional_mvn(loc_hat, cov_hat, a)
     return mubar, sigmabar
+
+@jax.jit
+def static_constrained_mvn(loc:Array, cov:Array, A:Array,b:Array):
+    """Compute loc and covariance os a mvn distribution constrained to  :math:`A@x=b`
+    First we make a joint distribution od :math:`x` and the constraints.
+    Next the constraints are marginalized by means of  ``conditional_mvn``.
+
+    :param loc: lcoation
+    :param cov: covariance matrix
+    :param A:constrain vector
+    :return:loc and covariance
+    """
+    A = jnp.atleast_2d(A)
+    Aall = jnp.concatenate([jnp.eye(*cov.shape), A], axis=0)
+    loc_hat = Aall @ loc
+    cov_hat = Aall @ cov @ Aall.T
+    return static_conditional_mvn(loc_hat, cov_hat, b)
